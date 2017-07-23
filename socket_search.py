@@ -21,7 +21,7 @@ bl_info = {
     "name":        "Socket Search",
     "author":      "Scott Winkelmann <scottlandart@gmail.com>",
     "version":     (1, 0, 0),
-    "blender":     (2, 79, 0),
+    "blender":     (2, 78, 5),
     "location":    "Node Editor",
     "description": "This addons mimics UE4's Blueprint node search system",
     "warning":     "DEV VERSION",
@@ -31,51 +31,6 @@ bl_info = {
 }
 
 addon_keymaps = []
-
-'''
-def autolink(node1, node2, links):
-    link_made = False
-
-    for outp in node1.outputs:
-        for inp in node2.inputs:
-            if not inp.is_linked and inp.name == outp.name:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    for outp in node1.outputs:
-        for inp in node2.inputs:
-            if not inp.is_linked and inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    # force some connection even if the type doesn't match
-    for outp in node1.outputs:
-        for inp in node2.inputs:
-            if not inp.is_linked:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    # even if no sockets are open, force one of matching type
-    for outp in node1.outputs:
-        for inp in node2.inputs:
-            if inp.type == outp.type:
-                link_made = True
-                links.new(outp, inp)
-                return True
-
-    # do something!
-    for outp in node1.outputs:
-        for inp in node2.inputs:
-            link_made = True
-            links.new(outp, inp)
-            return True
-
-    print("Could not make a link from " + node1.name + " to " + node2.name)
-    return link_made
-'''
 
 '''
 tree = context.space_data.node_tree
@@ -92,43 +47,63 @@ tree = context.space_data.node_tree
     return tree.nodes, tree.links
 '''
 
+'''
+class SgExportSkeletalMesh(bpy.types.Operator):
+    """Export the selection into a skeletal mesh as an FBX file"""
 
-def make_link(node1, node2, tree):
-    for inp in node1.inputs:
-        if not inp.is_linked:
-            for outp in node2.outputs:
-                if not outp.is_linked:
-                    if inp.name == outp.name or inp.type == outp.type:
-                        # print(inp.name)
-                        # print(outp.name)
-                        tree.links.new(outp, inp)
-                        return True
-    print("could not connect nodes")
-    return False
+    bl_idname = "sg.export_sk"
+    bl_label = "Export selection as a Skeletal mesh"
+    bl_options = {"REGISTER"}
+
+    overwrite = bpy.props.BoolProperty(name="overwrite", default=False)
+    name = bpy.props.StringProperty(name="name", default="SK_Untitled")
+
+    def run(self, context):
+        objects = context.selected_objects
+        export_skeletal_mesh(self, context, objects, self.name)
+
+    def execute(self, context):
+        self.run(context)
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+'''
 
 
 class SSRelease(bpy.types.Operator):
     """Calls the add node menu and connects the added node"""
-    bl_idname = "ss.release"
+    bl_idname = "node.ss_release_socket"
     bl_label = "Release socket"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
+        #we are in the node editor, on a shader node tree, and we have an active node
         return context.space_data.type == "NODE_EDITOR" and \
             context.space_data.tree_type == "ShaderNodeTree" and \
             context.active_node is not None
 
     def execute(self, context):
-        nodes = bpy.context.selected_nodes
+        '''
+        nodes = context.selected_nodes
         tree = context.space_data.node_tree
 
         if len(nodes) == 2:
-            make_link(nodes[0], nodes[1], tree)
+            bpy.ops.node.link_make(replace=True)
+            '''
 
-        bpy.ops.wm.call_menu(name="NODE_MT_add")
-        #print(info)
+        node = context.active_node
+        bpy.ops.node.add_search(use_transform=False)
+        #bpy.ops.wm.call_menu(name="NODE_MT_add")
+        node.select = True
+        bpy.ops.node.link_make(replace=True)
+
         return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+        #return self.execute(context)
 
 
 addon_keymaps = []
@@ -142,7 +117,7 @@ def register():
         name="Node Editor", space_type="NODE_EDITOR")
 
     kmi = km.keymap_items.new(
-        SSRelease.bl_idname, "LEFTMOUSE", "RELEASE", ctrl=False, shift=False)
+        SSRelease.bl_idname, "LEFTMOUSE", "RELEASE", ctrl=True, shift=True)
 
     addon_keymaps.append((km, kmi))
 
