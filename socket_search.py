@@ -21,7 +21,7 @@ bl_info = {
     "name":        "Socket Search",
     "author":      "Scott Winkelmann <scottlandart@gmail.com>",
     "version":     (1, 0, 0),
-    "blender":     (2, 78, 5),
+    "blender":     (2, 78, 0),
     "location":    "Node Editor",
     "description": "This addons mimics UE4's Blueprint node search system",
     "warning":     "DEV VERSION",
@@ -32,50 +32,52 @@ bl_info = {
 
 addon_keymaps = []
 
-'''
-tree = context.space_data.node_tree
-
-    # Get nodes from currently edited tree.
-    # If user is editing a group, space_data.node_tree is still the base level (outside group).
-    # context.active_node is in the group though, so if space_data.node_tree.nodes.active is not
-    # the same as context.active_node, the user is in a group.
-    # Check recursively until we find the real active node_tree:
-    if tree.nodes.active:
-        while tree.nodes.active != context.active_node:
-            tree = tree.nodes.active.node_tree
-
-    return tree.nodes, tree.links
-'''
-
-'''
-class SgExportSkeletalMesh(bpy.types.Operator):
-    """Export the selection into a skeletal mesh as an FBX file"""
-
-    bl_idname = "sg.export_sk"
-    bl_label = "Export selection as a Skeletal mesh"
-    bl_options = {"REGISTER"}
-
-    overwrite = bpy.props.BoolProperty(name="overwrite", default=False)
-    name = bpy.props.StringProperty(name="name", default="SK_Untitled")
-
-    def run(self, context):
-        objects = context.selected_objects
-        export_skeletal_mesh(self, context, objects, self.name)
-
-    def execute(self, context):
-        self.run(context)
-        return {"FINISHED"}
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-'''
-
 
 class SSRelease(bpy.types.Operator):
+    """Operator running on timer to check if a socket realease occured"""
+    bl_idname = "node.release_socket"
+    bl_label = "Socket Search Timer"
+
+    _timer = None
+    catched = False
+
+    def modal(self, context, event):
+        op = context.active_operator
+        if op is not None:
+            if op.name == "Link Nodes":
+                if not self.catched:
+                    self.catched = True
+                    print("released!")
+                    print(event.type)
+            else:
+                self.catched = False
+        '''
+        if event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
+            op = context.active_operator
+            if op is not None:
+                print(op.name)
+        '''
+
+        return {'PASS_THROUGH'}
+
+    def execute(self, context):
+        #add the timer on first run
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.1, context.window)
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def cancel(self, context):
+        #remove the timer
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
+
+
+class SSAddConnect(bpy.types.Operator):
     """Calls the add node menu and connects the added node"""
-    bl_idname = "node.ss_release_socket"
-    bl_label = "Release socket"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_idname = "node.ss_add_connect"
+    bl_label = "Add And Connect"
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
@@ -85,51 +87,63 @@ class SSRelease(bpy.types.Operator):
             context.active_node is not None
 
     def execute(self, context):
-        '''
-        nodes = context.selected_nodes
-        tree = context.space_data.node_tree
-
-        if len(nodes) == 2:
-            bpy.ops.node.link_make(replace=True)
-            '''
-
-        node = context.active_node
-        bpy.ops.node.add_search(use_transform=False)
+        #the folowing line calls the add menu. it is useless (see README)
         #bpy.ops.wm.call_menu(name="NODE_MT_add")
+
+        #save the active node for later
+        node = context.active_node
+        #add a new node
+        #clling add_search without the "node_item" param uses 0 and thus adds the first node "Attribute"
+        bpy.ops.node.add_search(use_transform=False)
+        #re-select the node
         node.select = True
+        #link the two nodes
+        #replace=True is not mandatory
         bpy.ops.node.link_make(replace=True)
 
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-        #return self.execute(context)
+        #folowing line invokes the property dialogue. not usefull for now
+        #return context.window_manager.invoke_props_dialog(self)
+        return self.execute(context)
 
 
-addon_keymaps = []
+#defines the list that will contain all the addon keymaps
+#disabled for now, because of the use of the timer to detect socket release instead of the left click release
+#addon_keymaps = []
 
 
 def register():
     bpy.utils.register_class(SSRelease)
+    bpy.utils.register_class(SSAddConnect)
 
+    '''
     # handle the keymap
     km = bpy.context.window_manager.keyconfigs.addon.keymaps.new(
         name="Node Editor", space_type="NODE_EDITOR")
-
     kmi = km.keymap_items.new(
-        SSRelease.bl_idname, "LEFTMOUSE", "RELEASE", ctrl=True, shift=True)
+        SSRelease.bl_idname, "LEFTMOUSE", "RELEASE", ctrl=False, shift=False)
 
     addon_keymaps.append((km, kmi))
+    '''
 
 
 def unregister():
+    '''
     # handle the keymap
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
+    '''
 
+    bpy.utils.unregister_class(SSAddConnect)
     bpy.utils.unregister_class(SSRelease)
 
 
 if __name__ == "__main__":
     register()
+
+    #calls the timer to start it
+    #if the addon is installed, you will need to run the operator yourself the first time
+    bpy.ops.node.release_socket()
