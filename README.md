@@ -3,6 +3,14 @@
 Blender addon designed to replicate UE4's node search feature.
 
 
+## How to use
+
+- Install the addon as a file, not as a folder.
+- Run the *Socket Search Timer* operator once.
+- Toggle the system console
+- When you release a node socket, you will see it in the console
+
+
 ## Current state
 
 I am now able to detect a socket release.
@@ -33,7 +41,6 @@ Possible fix: create a whole different menu containing all the nodes and make ea
     a lot of work and a need to redo it for any added node
 
 
-
 ## References
 
 [Unreal Engine: How to place nodes](https://docs.unrealengine.com/latest/INT/Engine/Blueprints/BP_HowTo/PlacingNodes/index.html)
@@ -41,3 +48,7 @@ Possible fix: create a whole different menu containing all the nodes and make ea
 [Blender Python API news 2.79](https://wiki.blender.org/index.php/Dev:Ref/Release_Notes/2.79/PythonAPI)
 
 [Blender Python API node.link](https://docs.blender.org/api/blender_python_api_2_76_9/bpy.ops.node.html#bpy.ops.node.link)
+
+[Original Martin Lindelöf's video](https://youtu.be/s9SU4qK84eI)
+
+[Martin's follow-up video](https://youtu.be/ONxGCbQ8SDs)
